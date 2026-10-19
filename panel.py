@@ -574,8 +574,15 @@ a{color:var(--acc);text-decoration:none}.arr{color:var(--mut);display:inline-blo
 .inner{padding:10px 12px 14px 36px;display:grid;gap:10px}
 .inner table{min-width:0}.inner th,.inner td{background:transparent;padding:5px 10px;font-size:13px;vertical-align:middle}
 .chart{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
-.chart .lg{font-size:12px;color:var(--mut);display:flex;gap:14px;margin-bottom:4px}
+.chart .lg{font-size:12px;color:var(--mut);display:flex;gap:14px;margin-bottom:4px;flex-wrap:wrap}
 .chart .lg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.cwrap{position:relative}
+.dbar{cursor:pointer}.dbar:hover .bg,.dbar.on .bg{fill:var(--soft)}.dbar.on rect:nth-child(3){fill:var(--acc);opacity:.55}
+.tip{position:fixed;z-index:5;min-width:250px;max-width:300px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:11px 14px;box-shadow:0 8px 28px rgba(0,0,0,.18);font-size:13px;pointer-events:auto}
+.tip .th{font-weight:700;margin-bottom:6px}.tip .tl{display:flex;align-items:baseline;gap:6px;margin:3px 0}
+.tip .tl i{flex:1;border-bottom:1px dotted var(--line);transform:translateY(-3px)}.tip .tl.sub{color:var(--mut);font-size:12px;padding-left:10px;margin:1px 0}
+.tip .tl.tot{border-top:1px solid var(--line);padding-top:6px;margin-top:6px}.tip .tl.tot b{font-size:15px}
+.tip .tn{color:var(--mut);font-size:11px;margin-top:6px}
 .nm{font-weight:600}.hint{display:block;font-size:11.5px;color:var(--acc);margin-left:14px}
 .pl{display:block;font-size:11.5px;margin-left:14px;color:var(--mut)}
 tr.cl.on>td{background:var(--soft)}td[data-p]:hover{box-shadow:inset 0 0 0 2px var(--acc);border-radius:4px}
@@ -829,20 +836,7 @@ function detailRow(r,per){
  const [a,b,pa,pb]=ranges[per]||ranges.w;
  const c=sum(L,a,b),p=sum(L,pa,pb);
  // график
- const pts=L.slice(-30);
- const maxC=Math.max(...pts.map(d=>d.contacts),1);
- const maxS=Math.max(...pts.map(d=>cs(d)),1);
- const W=560,H=80,pad=4,bw=Math.floor((W-pad*2)/pts.length)-1;
- let bars='';let xi=pad;
- for(const d of pts){
-  const hc=Math.max(1,Math.round((d.contacts/maxC)*(H-8)));
-  const hs=Math.max(1,Math.round((cs(d)/maxS)*(H-8)));
-  bars+=`<g class="dbar"><rect class="bg" x="${xi}" y="0" width="${bw+1}" height="${H}" fill="transparent"/>`
-   +`<rect x="${xi}" y="${H-hs}" width="${bw}" height="${hs}" fill="var(--bar)" rx="1"/>`
-   +`<rect x="${xi}" y="${H-hc}" width="${bw}" height="${hc}" fill="var(--acc)" rx="1" opacity=".7"/></g>`;
-  xi+=bw+1;}
- const chartHtml=`<div class="chart"><div class="lg"><i style="background:var(--acc)"></i>Контакты<i style="background:var(--bar)"></i>Расход</div>`
-  +`<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}">${bars}</svg></div>`;
+ const chartHtml=chart(r);
  // KPI
  const kpis=`<div class="kpis">
   <div class="kpi"><span class="kl">CPL</span><b>${rub1(c.cpl)}</b>${delta(c.cpl,p.cpl,false)}</div>
@@ -860,6 +854,69 @@ function detailRow(r,per){
  const revHtml=replyLists(r);
  const ptabsHtml=`<div class="dh"><div class="ptabs">${['today','yday','w','m30'].map(p=>`<button class="${p===per?'on':''}" data-n="${esc(r.name)}" data-p="${p}" onclick="setPer(event,this)">${{today:'Сегодня',yday:'Вчера',w:'7 дней',m30:'30 дней'}[p]}</button>`).join('')}</div></div>`;
  return `<tr class="det"><td colspan="11"><div class="inner">${ptabsHtml}${kpis}${chartHtml}${revHtml?revHtml:''}${dayTable}</div></td></tr>`;}
+const CH={};
+function chart(r){const list=r.days.list,tgt=r.target_cpl,L=list.length,days=[];
+ for(let o=30;o>=0;o--)days.push(list[L-1-o]);
+ const key=r.name;CH[key]={days,tgt};
+ const W=1100,H=190,pl=30,pr=52,pt=10,pb=40,iw=W-pl-pr,ih=H-pt-pb,bw=iw/days.length;
+ const mc=Math.max(1,...days.map(d=>d.contacts));
+ const cpls=days.map(d=>d.contacts?cs(d)/d.contacts:null),ml=Math.max(1,...cpls.filter(v=>v!=null),tgt||0);
+ let g='',pts=[];
+ days.forEach((d,i)=>{const x=pl+i*bw,h=d.contacts/mc*ih,today=i===days.length-1;
+  const dt=new Date(d.date+'T12:00:00'),wd=dt.getDay(),we=wd===0||wd===6;
+  g+=`<g class="dbar" data-k="${esc(key)}" data-i="${i}">
+   <rect class="hit" x="${(x).toFixed(1)}" y="${pt}" width="${bw.toFixed(1)}" height="${ih+pb}" fill="transparent"/>
+   <rect class="bg" x="${(x+1).toFixed(1)}" y="${pt}" width="${(bw-2).toFixed(1)}" height="${ih}" rx="3" fill="${today?'var(--soft)':'transparent'}"/>
+   <rect x="${(x+1.5).toFixed(1)}" y="${(pt+ih-h).toFixed(1)}" width="${(bw-3).toFixed(1)}" height="${Math.max(h,d.contacts?2:0).toFixed(1)}" rx="3" fill="var(--bar)"/>
+   <text x="${(x+bw/2).toFixed(1)}" y="${pt+ih+14}" text-anchor="middle" font-size="10.5" fill="${we?'var(--down)':'var(--ink)'}">${dt.getDate()}</text>
+   <text x="${(x+bw/2).toFixed(1)}" y="${pt+ih+27}" text-anchor="middle" font-size="9.5" fill="var(--mut)">${['вс','пн','вт','ср','чт','пт','сб'][wd]}</text></g>`;
+  if(cpls[i]!=null&&!today)pts.push(`${(x+bw/2).toFixed(1)},${(pt+ih-cpls[i]/ml*ih).toFixed(1)}`);});
+ const ty=tgt?(pt+ih-tgt/ml*ih).toFixed(1):0;
+ const tl=tgt?`<line x1="${pl}" x2="${W-pr}" y1="${ty}" y2="${ty}" stroke="var(--warnb)" stroke-dasharray="4 3" pointer-events="none"/><text x="${W-pr+4}" y="${+ty+4}" font-size="10" fill="var(--warnb)">цель</text>`:'';
+ const ax=`<text x="${pl-5}" y="${pt+9}" text-anchor="end" font-size="10" fill="var(--mut)">${mc}</text><text x="${pl-5}" y="${pt+ih}" text-anchor="end" font-size="10" fill="var(--mut)">0</text>
+  <text x="${W-pr+4}" y="${pt+9}" font-size="10" fill="var(--acc)">${n(ml)} ₽</text>`;
+ return `<div class="chart" data-k="${esc(key)}"><div class="lg"><span><i style="background:var(--bar)"></i>контакты</span><span><i style="background:var(--acc)"></i>цена контакта</span>${tgt?'<span><i style="background:var(--warnb)"></i>цель</span>':''}<span>наведите или нажмите на день — покажу всё за этот день</span></div>
+ <div class="cwrap"><svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block" role="img" aria-label="Контакты и цена контакта по дням">${g}${tl}<polyline points="${pts.join(' ')}" fill="none" stroke="var(--acc)" stroke-width="2" stroke-linejoin="round" pointer-events="none"/>${ax}</svg><div class="tip" hidden></div></div></div>`;}
+function tipHtml(d,prev,tgt){
+ const dt=new Date(d.date+'T12:00:00'),today=d.date===DATA_TODAY();
+ const cpl=d.contacts?cs(d)/d.contacts:null,pc=prev&&prev.contacts?cs(prev)/prev.contacts:null;
+ const conv=d.views?d.contacts/d.views*100:null;
+ const line=(label,val,extra)=>`<div class="tl"><span>${label}</span><i></i><b>${val}</b>${extra||''}</div>`;
+ const sub=(label,val)=>`<div class="tl sub"><span>${label}</span><i></i><span>${val}</span></div>`;
+ let h=`<div class="th">${dt.toLocaleDateString('ru-RU',{day:'numeric',month:'long',weekday:'short'})}${today?' <span class="part">неполный день</span>':''}</div>`;
+ h+=line('Контакты',n(d.contacts),prev?delta(d.contacts,prev.contacts,true):'');
+ if(d.phone!=null)h+=sub('посмотрели телефон',n(d.phone));
+ if(d.chat!=null)h+=sub('написали в чат',n(d.chat));
+ h+=line('Просмотры',n(d.views),prev?delta(d.views,prev.views,true):'');
+ h+=line('Конверсия',pctf(conv));
+ h+=line('Расход',rub(d.spend),prev?delta(d.spend,prev.spend,null):'');
+ if(d.promo!=null)h+=sub('на продвижение',rub(d.promo));
+ if(d.presence!=null)h+=sub('размещение и целевые',rub(d.presence));
+ if(d.rest)h+=sub('прочее (тариф и др.)',rub(d.rest));
+ if(d.bonus)h+=sub('из них бонусами',rub(d.bonus));
+ h+=`<div class="tl tot"><span>Цена контакта</span><i></i><b>${rub1(cpl)}</b>${prev?delta(cpl,pc,false):''}</div>`;
+ if(tgt&&cpl!=null)h+=`<div class="tl sub"><span>цель ${rub(tgt)}</span><i></i><span class="${cpl>tgt?'down':'up'}">${cpl>tgt?'выше на '+((cpl-tgt)/tgt*100).toFixed(0)+'%':'в пределах'}</span></div>`;
+ return h+(prev?'<div class="tn">▲▼ — к предыдущему дню</div>':'');}
+function DATA_TODAY(){const c=DATA&&DATA.clients.find(x=>x.days&&x.days.list);return c?c.days.list[c.days.list.length-1].date:'';}
+let PIN=null;
+function showTip(gEl,pin){const k=gEl.dataset.k,i=+gEl.dataset.i,C=CH[k];if(!C)return;
+ const box=gEl.closest('.cwrap'),tip=box.querySelector('.tip');
+ box.querySelectorAll('.dbar.on').forEach(x=>x.classList.remove('on'));gEl.classList.add('on');
+ tip.innerHTML=tipHtml(C.days[i],C.days[i-1],C.tgt);tip.hidden=false;
+ placeTip(gEl,tip);if(pin)PIN=gEl;}
+function placeTip(gEl,tip){
+ const gr=gEl.getBoundingClientRect(),w=tip.offsetWidth,h=tip.offsetHeight;
+ let x=gr.right+8;if(x+w>innerWidth-8)x=gr.left-w-8;
+ let y=gr.top+gr.height/2-h/2;y=Math.min(Math.max(8,y),innerHeight-h-8);
+ tip.style.left=Math.max(8,x)+'px';tip.style.top=y+'px';}
+addEventListener('scroll',()=>{if(PIN&&document.contains(PIN))placeTip(PIN,PIN.closest('.cwrap').querySelector('.tip'));
+ else document.querySelectorAll('.cwrap').forEach(hideTip);},true);
+function hideTip(box){if(PIN&&box.contains(PIN))return;box.querySelector('.tip').hidden=true;box.querySelectorAll('.dbar.on').forEach(x=>x.classList.remove('on'));}
+document.addEventListener('mouseover',e=>{const g=e.target.closest&&e.target.closest('.dbar');if(g&&!PIN)showTip(g,false);});
+document.addEventListener('mouseout',e=>{const b=e.target.closest&&e.target.closest('.cwrap');if(b&&!b.contains(e.relatedTarget))hideTip(b);});
+document.addEventListener('click',e=>{const g=e.target.closest&&e.target.closest('.dbar');
+ if(g){e.stopPropagation();if(PIN===g){PIN=null;}else{PIN=null;showTip(g,true);}return;}
+ if(PIN&&!(e.target.closest&&e.target.closest('.tip'))){const b=PIN.closest('.cwrap');PIN=null;if(b)hideTip(b);}},true);
 const DRAFT={};
 document.addEventListener('input',e=>{const ta=e.target;if(ta.tagName==='TEXTAREA'&&ta.dataset.k)DRAFT[ta.dataset.k]=ta.value;});
 async function sendAnswer(btn){const name=btn.dataset.n,id=+btn.dataset.id,box=btn.closest('.ans'),ta=box.querySelector('textarea'),msg=box.querySelector('.ansmsg');
