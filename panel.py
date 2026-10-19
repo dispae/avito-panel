@@ -898,7 +898,6 @@ function tipHtml(d,prev,tgt){
  if(tgt&&cpl!=null)h+=`<div class="tl sub"><span>цель ${rub(tgt)}</span><i></i><span class="${cpl>tgt?'down':'up'}">${cpl>tgt?'выше на '+((cpl-tgt)/tgt*100).toFixed(0)+'%':'в пределах'}</span></div>`;
  return h+(prev?'<div class="tn">▲▼ — к предыдущему дню</div>':'');}
 function DATA_TODAY(){const c=DATA&&DATA.clients.find(x=>x.days&&x.days.list);return c?c.days.list[c.days.list.length-1].date:'';}
-let PIN=null;
 function showTip(gEl,pin){const k=gEl.dataset.k,i=+gEl.dataset.i,C=CH[k];if(!C)return;
  const box=gEl.closest('.cwrap'),tip=box.querySelector('.tip');
  box.querySelectorAll('.dbar.on').forEach(x=>x.classList.remove('on'));gEl.classList.add('on');
