@@ -846,7 +846,8 @@ function detailRow(r,per){
   <div class="kpi"><span class="kl">Расход</span><b>${rub(c.spend)}</b>${delta(c.spend,p.spend,false)}</div>
  </div>`;
  // разбивка по дням
- const dayRows=pts.slice().reverse().map(d=>{
+ const dayPts=L.slice(-30);
+ const dayRows=dayPts.slice().reverse().map(d=>{
   const dc=sum([d],0,0);
   return `<tr><td>${fmtDate(d.date)}</td><td>${n(d.views)}</td><td>${n(d.contacts)}</td><td>${rub(d.spend)}</td><td>${rub1(dc.cpl)}</td></tr>`;}).join('');
  const dayTable=`<table><tr><th>День</th><th>Показы</th><th>Контакты</th><th>Расход</th><th>CPL</th></tr>${dayRows}</table>`;
