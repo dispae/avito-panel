@@ -830,31 +830,33 @@ function reviewsCell(rv){
 function stars(s){s=Math.max(0,Math.min(5,s||0));return '<span class="stars">'+'★'.repeat(s)+'<i>'+'★'.repeat(5-s)+'</i></span>';}
 function ago(ts){const m=Math.round((Date.now()/1000-ts)/60);if(m<60)return m+' мин назад';const h=Math.round(m/60);if(h<24)return h+' ч назад';return Math.round(h/24)+' дн назад';}
 
-function detailRow(r,per){
- const L=(r.days&&r.days.list)||[];
- const ranges={today:[0,0,1,1],yday:[1,1,2,2],w:[1,7,8,14],m30:[1,30,31,60]};
- const [a,b,pa,pb]=ranges[per]||ranges.w;
- const c=sum(L,a,b),p=sum(L,pa,pb);
- // график
- const chartHtml=chart(r);
- // KPI
- const kpis=`<div class="kpis">
-  <div class="kpi"><span class="kl">CPL</span><b>${rub1(c.cpl)}</b>${delta(c.cpl,p.cpl,false)}</div>
-  <div class="kpi"><span class="kl">Контакты</span><b>${n(c.contacts)}</b>${delta(c.contacts,p.contacts,true)}</div>
-  <div class="kpi"><span class="kl">Просмотры</span><b>${n(c.views)}</b>${delta(c.views,p.views,true)}</div>
-  <div class="kpi"><span class="kl">Конверсия</span><b>${pctf(c.conv)}</b>${delta(c.conv,p.conv,true)}</div>
-  <div class="kpi"><span class="kl">Расход</span><b>${rub(c.spend)}</b>${delta(c.spend,p.spend,false)}</div>
- </div>`;
- // разбивка по дням
- const dayPts=L.slice(-30);
- const dayRows=dayPts.slice().reverse().map(d=>{
-  const dc=sum([d],0,0);
-  return `<tr><td>${fmtDate(d.date)}</td><td>${n(d.views)}</td><td>${n(d.contacts)}</td><td>${rub(d.spend)}</td><td>${rub1(dc.cpl)}</td></tr>`;}).join('');
- const dayTable=`<table><tr><th>День</th><th>Показы</th><th>Контакты</th><th>Расход</th><th>CPL</th></tr>${dayRows}</table>`;
- // отзывы
- const revHtml=replyLists(r);
- const ptabsHtml=`<div class="dh"><div class="ptabs">${['today','yday','w','m30'].map(p=>`<button class="${p===per?'on':''}" data-n="${esc(r.name)}" data-p="${p}" onclick="setPer(event,this)">${{today:'Сегодня',yday:'Вчера',w:'7 дней',m30:'30 дней'}[p]}</button>`).join('')}</div></div>`;
- return `<tr class="det"><td colspan="11"><div class="inner">${ptabsHtml}${kpis}${chartHtml}${revHtml?revHtml:''}${dayTable}</div></td></tr>`;}
+const PER={today:{t:'Сегодня',a:0,b:0,pa:1,pb:1,cmp:'вчера',rows:[0,13]},
+ yday:{t:'Вчера',a:1,b:1,pa:2,pb:2,cmp:'позавчера',rows:[0,13]},
+ w:{t:'7 дней',a:1,b:7,pa:8,pb:14,cmp:'прошлые 7 дней',rows:[0,14]},
+ m30:{t:'30 дней',a:1,b:30,pa:31,pb:60,cmp:'прошлые 30 дней',rows:[0,30]}};
+function kpi(label,cur,prev,fmt,goodUp,partial){
+ return `<div class="kpi"><span class="kl">${label}</span><b>${fmt(cur)}</b>${delta(cur,prev,goodUp)}<span class="kp">было ${fmt(prev)}</span></div>`;}
+function detailRow(r,per){const list=(r.days&&r.days.list)||[],tgt=r.target_cpl,P=PER[per]||PER.w,L=list.length;
+ const c=sum(list,P.a,P.b),p=sum(list,P.pa,P.pb),part=per==='today';
+ const tabs=Object.entries(PER).map(([k,v])=>`<button class="${k===per?'on':''}" data-n="${esc(r.name)}" data-p="${k}" onclick="setPer(event,this)">${v.t}</button>`).join('');
+ const dates=L>0?(P.a===P.b?fmtDate(list[L-1-P.a]?.date||''):`${fmtDate(list[Math.max(0,L-1-P.b)]?.date||'')} — ${fmtDate(list[Math.max(0,L-1-P.a)]?.date||'')}`):'';
+ const kp=`<div class="kpis">
+  ${kpi('Цена контакта',c.cpl,p.cpl,rub1,false)}
+  ${kpi('Контакты',c.contacts,p.contacts,n,true,part)}
+  ${kpi('Просмотры',c.views,p.views,n,true,part)}
+  ${kpi('Конверсия',c.conv,p.conv,pctf,true)}
+  ${kpi('Расход',c.spend,p.spend,rub,null,part)}
+  ${tgt?`<div class="kpi"><span class="kl">Цель CPL</span><b>${rub(tgt)}</b>${c.cpl!=null?`<span class="d ${c.cpl>tgt?'down':'up'}">${c.cpl>tgt?'выше на '+((c.cpl-tgt)/tgt*100).toFixed(0)+'%':'в пределах цели'}</span>`:''}</div>`:''}</div>`;
+ let tr='';
+ for(let o=P.rows[0];o<=Math.min(P.rows[1],L-2);o++){const d=list[L-1-o],q=list[L-2-o],inP=o>=P.a&&o<=P.b;
+  const dc=sum(list,o,o),qc=sum(list,o+1,o+1);
+  const lbl=o===0?'сегодня <span class="part">неполный</span>':o===1?'вчера':new Date(d.date+'T12:00:00').toLocaleDateString('ru-RU',{day:'numeric',month:'short',weekday:'short'});
+  tr+=`<tr class="${inP?'inp':''}"><td>${lbl}</td><td><span class="big">${rub1(dc.cpl)}</span>${delta(dc.cpl,qc.cpl,false)}</td><td>${n(d.contacts)}${delta(d.contacts,q.contacts,true)}</td><td>${pctf(dc.conv)}${delta(dc.conv,qc.conv,true)}</td><td>${n(d.views)}${delta(d.views,q.views,true)}</td><td>${rub(d.spend)}${delta(d.spend,q.spend,null)}</td></tr>`;}
+ return `<tr class="det"><td colspan="11"><div class="inner">
+  <div class="dh"><div class="ptabs">${tabs}</div><div class="mut">${esc(r.name)} · ${P.t.toLowerCase()} (${dates}) против: ${P.cmp}${part?' · день неполный, сравнение со всем вчерашним днём, как в Авито':''}</div></div>
+  ${kp}${replyLists(r)}${chart(r)}
+  <table><thead><tr><th>День</th><th>CPL</th><th>Контакты</th><th>Конверсия</th><th>Просмотры</th><th>Расход</th></tr></thead><tbody>${tr}</tbody></table>
+  <div class="mut" style="font-size:12px">Подсвечены дни выбранного периода. ▲▼ в таблице — к предыдущему дню.</div></div></td></tr>`;}
 const CH={};
 function chart(r){const list=r.days.list,tgt=r.target_cpl,L=list.length,days=[];
  for(let o=30;o>=0;o--)days.push(list[L-1-o]);
