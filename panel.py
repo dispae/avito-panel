@@ -816,7 +816,7 @@ function render(){
     +cplCell(L,1,30,31,60,'',false,'m30')
     +`<td class="bl" data-p="w">${n(w.contacts)}${delta(w.contacts,p.contacts,true)}</td>`
     +`<td data-p="w">${pctf(w.conv)}${delta(w.conv,p.conv,true)}<span class="s">${n(w.views)} просм.</span></td>`
-    +`<td data-p="w">${rub(w.spend)}${delta(w.spend,p.spend,null)}</td>`;}}
+    +`<td data-p="w">${rub(w.spend)}${delta(w.spend,p.spend,null)}</td>`;}
   const isOpen=OPEN.has(r.name);
   rows+=`<tr class="cl${isOpen?' on':''}" data-n="${esc(r.name)}" onclick="rowClick(event,this)"><td><span class="arr">${isOpen?'▾':'▸'}</span>${name}</td>${tdU}${tdM}${tdP}<td class="bl">${tag}</td></tr>`;
   if(isOpen){const per=OPEN.get(r.name)||'w';rows+=detailRow(r,per);}
