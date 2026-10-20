@@ -810,16 +810,20 @@ function render(){
   else{const L=ds.list,w=sum(L,1,7),p=sum(L,8,14),tgt=r.target_cpl;
    const tg=tgt&&w.cpl!=null?`<span class="s ${w.cpl>tgt*(1+T.overTarget/100)?'hot':''}">цель ${rub(tgt)}</span>`:'';
    tdP=cplCell(L,0,0,1,1,'bl',true,'today')+cplCell(L,1,1,2,2,'',false,'yday')
-    +`<td class="bl" data-p="w"><span class="big">${rub1(w.cpl)}</span>${delta(w.cpl,p.cpl,false)}${tg}<span class="cnt">${n(w.contacts)} <span class="u">конт.</span>${delta(w.contacts,p.contacts,true)}</span></td>`
-    +`<td data-p="w"><span class="s">${pctf(w.conv)}</span>${delta(w.conv,p.conv,true)}</td>`
-    +`<td data-p="w">${rub(w.spend)}${delta(w.spend,p.spend,false)}</td>`
-    +cplCell(L,1,30,31,60,'bl',false,'m30');}
+    +`<td class="bl" data-p="w"><span class="big">${rub1(w.cpl)}</span>${delta(w.cpl,p.cpl,false)}${tg}</td>`
+    +cplCell(L,1,30,31,60,'',false,'m30')
+    +`<td class="bl" data-p="w">${n(w.contacts)}${delta(w.contacts,p.contacts,true)}</td>`
+    +`<td data-p="w">${pctf(w.conv)}${delta(w.conv,p.conv,true)}<span class="s">${n(w.views)} просм.</span></td>`
+    +`<td data-p="w">${rub(w.spend)}${delta(w.spend,p.spend,null)}</td>`;}}
   const isOpen=OPEN.has(r.name);
   rows+=`<tr class="cl${isOpen?' on':''}" data-n="${esc(r.name)}" onclick="rowClick(event,this)"><td><span class="arr">${isOpen?'▾':'▸'}</span>${name}</td>${tdU}${tdM}${tdP}<td class="bl">${tag}</td></tr>`;
   if(isOpen){const per=OPEN.get(r.name)||'w';rows+=detailRow(r,per);}
  }
- const thead=`<tr><th></th><th>Отзывы</th><th class="bl">Деньги</th><th class="bl grp" colspan="2">Сегодня</th><th class="bl grp" colspan="3">7 дней</th><th class="bl grp" colspan="1">30 дней</th><th class="bl">Сигнал</th></tr>`;
- out.innerHTML=attention(diags)+`<div class="tbl"><table>${thead}${rows}</table></div>`;}
+ out.innerHTML=attention(diags)+`<div class="tbl"><table><thead>
+ <tr><th rowspan="2">Клиент</th><th rowspan="2">Отзывы<br><span class="part">рейтинг · за 7 дн.</span></th><th rowspan="2" class="bl">Деньги</th>
+ <th colspan="4" class="grp bl">CPL · цена контакта</th><th colspan="3" class="grp bl">Последние 7 дней</th><th rowspan="2" class="bl">Сигнал</th></tr>
+ <tr><th class="bl">Сегодня <span class="part">неполный</span></th><th>Вчера</th><th class="bl">7 дней</th><th>30 дней</th>
+ <th class="bl">Контакты</th><th>Конверсия</th><th>Расход</th></tr></thead><tbody>${rows}</tbody></table></div>`;}
 
 function reviewsCell(rv){
  if(!rv)return '<td class="mut">—</td>';
@@ -852,7 +856,7 @@ function detailRow(r,per){const list=(r.days&&r.days.list)||[],tgt=r.target_cpl,
   const dc=sum(list,o,o),qc=sum(list,o+1,o+1);
   const lbl=o===0?'сегодня <span class="part">неполный</span>':o===1?'вчера':new Date(d.date+'T12:00:00').toLocaleDateString('ru-RU',{day:'numeric',month:'short',weekday:'short'});
   tr+=`<tr class="${inP?'inp':''}"><td>${lbl}</td><td><span class="big">${rub1(dc.cpl)}</span>${delta(dc.cpl,qc.cpl,false)}</td><td>${n(d.contacts)}${delta(d.contacts,q.contacts,true)}</td><td>${pctf(dc.conv)}${delta(dc.conv,qc.conv,true)}</td><td>${n(d.views)}${delta(d.views,q.views,true)}</td><td>${rub(d.spend)}${delta(d.spend,q.spend,null)}</td></tr>`;}
- return `<tr class="det"><td colspan="11"><div class="inner">
+ return `<tr class="det"><td colspan="12"><div class="inner">
   <div class="dh"><div class="ptabs">${tabs}</div><div class="mut">${esc(r.name)} · ${P.t.toLowerCase()} (${dates}) против: ${P.cmp}${part?' · день неполный, сравнение со всем вчерашним днём, как в Авито':''}</div></div>
   ${kp}${replyLists(r)}${chart(r)}
   <table><thead><tr><th>День</th><th>CPL</th><th>Контакты</th><th>Конверсия</th><th>Просмотры</th><th>Расход</th></tr></thead><tbody>${tr}</tbody></table>
