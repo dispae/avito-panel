@@ -378,11 +378,13 @@ def fetch_client(client):
             out.append(dict(date=d, **v))
         return {"list": out}
 
-    row["reviews"] = safe(reviews)
-    row["noreply"] = safe(noreply)
-    row["wallet"] = safe(wallet)
-    row["advance"] = safe(advance)
-    row["days"] = safe(days)
+    with ThreadPoolExecutor(max_workers=5) as ex:
+        futs = {k: ex.submit(safe, fn) for k, fn in [
+            ("reviews", reviews), ("noreply", noreply),
+            ("wallet", wallet), ("advance", advance), ("days", days),
+        ]}
+        for k, f in futs.items():
+            row[k] = f.result()
     return row
 
 
